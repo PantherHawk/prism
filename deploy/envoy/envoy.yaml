@@ -1,0 +1,91 @@
+# Envoy bootstrap for prism's end-to-end suite.
+#
+# The point of this file is not to be a realistic proxy. It is to make Envoy
+# emit the shapes prism has to survive: two clusters so that a pivot on
+# envoy_cluster_name has something to separate, upstream request timing so that
+# the histogram families are populated rather than declared and empty, and a
+# route that answers 404 directly so that response-code stats are not all 200.
+#
+# Nothing here is tuned for prism. If a family only renders because of something
+# written below, that is a bug in prism, not a reason to change this file.
+
+admin:
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901
+
+static_resources:
+  listeners:
+    - name: ingress
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 10000
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                # Per-virtual-host stats give the http families a second label
+                # to pivot on besides the cluster.
+                route_config:
+                  name: local
+                  virtual_hosts:
+                    - name: edge
+                      domains: ["*"]
+                      routes:
+                        - match:
+                            prefix: /api
+                          route:
+                            cluster: api
+                        - match:
+                            prefix: /web
+                          route:
+                            cluster: web
+                        # Everything else is answered here rather than upstream,
+                        # so the response-code stats carry more than one value.
+                        - match:
+                            prefix: /
+                          direct_response:
+                            status: 404
+                            body:
+                              inline_string: "no route\n"
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    # Two clusters over one backend. They are identical on purpose: any
+    # difference prism shows between them comes from the traffic the load
+    # generators send, which is what makes the walkthrough's two lines mean
+    # something.
+    - name: api
+      type: STRICT_DNS
+      connect_timeout: 1s
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: api
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: backend
+                      port_value: 80
+
+    - name: web
+      type: STRICT_DNS
+      connect_timeout: 1s
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: web
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: backend
+                      port_value: 80

@@ -1,0 +1,83 @@
+# The target prism is built against, stood up locally.
+#
+#   make envoy-up        bring the stack up and wait for it to be serving stats
+#   make bdd-envoy       run the acceptance suite against the live admin port
+#   make envoy-fixture   re-record features/testdata/envoy-stats.txt
+#   make envoy-down      tear it down
+#
+# Envoy's admin listener is published on 9901, which is where prism looks by
+# default, so `./bin/prism` needs no configuration once this is up.
+
+name: prism-envoy
+
+services:
+  # The thing being proxied. Any HTTP server would do; this one is a few
+  # megabytes and answers every path.
+  backend:
+    image: traefik/whoami:v1.10
+    command: ["--port=80"]
+    expose:
+      - "80"
+
+  envoy:
+    image: envoyproxy/envoy:${ENVOY_TAG:-v1.31-latest}
+    # Envoy exits non-zero on a bootstrap it cannot parse, and a container that
+    # restarts forever hides that. Failing once and staying down is louder.
+    restart: "no"
+    command:
+      - -c
+      - /etc/envoy/envoy.yaml
+      - --service-cluster
+      - edge
+      - --service-node
+      - edge-0
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "9901:9901"
+      - "10000:10000"
+    depends_on:
+      - backend
+
+  # Two generators rather than one, at different rates, so the two clusters
+  # carry visibly different traffic. A pivot that separates one line into two
+  # identical lines demonstrates nothing.
+  #
+  # They restart because Envoy may not be listening yet on the first attempt;
+  # a failed dial here is not interesting, it is just startup ordering.
+  load-api:
+    image: fortio/fortio:latest
+    restart: unless-stopped
+    command: ["load", "-c", "4", "-qps", "25", "-t", "0", "-quiet", "http://envoy:10000/api"]
+    depends_on:
+      - envoy
+
+  load-web:
+    image: fortio/fortio:latest
+    restart: unless-stopped
+    command: ["load", "-c", "2", "-qps", "8", "-t", "0", "-quiet", "http://envoy:10000/web"]
+    depends_on:
+      - envoy
+
+  # A trickle of requests that match no route, so the response-code families
+  # hold more than a single value.
+  #
+  # -allow-initial-errors because the 404 is the point. Without it fortio treats
+  # the first non-2xx as a misconfiguration and exits, and the container spends
+  # its life restarting instead of generating the one thing it is here for.
+  load-miss:
+    image: fortio/fortio:latest
+    restart: unless-stopped
+    command:
+      - load
+      - -c
+      - "1"
+      - -qps
+      - "2"
+      - -t
+      - "0"
+      - -quiet
+      - -allow-initial-errors
+      - http://envoy:10000/nowhere
+    depends_on:
+      - envoy

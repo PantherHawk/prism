@@ -1,0 +1,80 @@
+version: 2
+
+project_name: prism
+
+before:
+  hooks:
+    - go mod tidy
+    - golangci-lint run ./...
+
+builds:
+  - id: prism
+    main: ./cmd/prism
+    binary: prism
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: prism
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - config.example.yaml
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive
+
+changelog:
+  sort: asc
+  use: github
+  groups:
+    - title: Features
+      regexp: '^feat'
+      order: 0
+    - title: Fixes
+      regexp: '^fix'
+      order: 1
+    - title: Performance
+      regexp: '^perf'
+      order: 2
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+nfpms:
+  - id: prism
+    formats: [deb, rpm, apk]
+    maintainer: prism maintainers
+    description: A terminal UI for Prometheus metrics.
+    license: MIT
+    contents:
+      - src: config.example.yaml
+        dst: /etc/prism/config.yaml
+        type: config|noreplace
+
+release:
+  prerelease: auto
+  footer: |
+    Built with Bubble Tea v2 and Ultraviolet.

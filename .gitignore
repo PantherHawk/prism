@@ -1,0 +1,14 @@
+# The built binary. `make build` puts it here and `make tape` puts it on PATH
+# ahead of anything installed, so a recording captures the working tree.
+/bin/
+
+# Where `make tape` records. These are working files: one gif per tape plus
+# every still it takes, regenerated on any run and never identical twice, since
+# a live chart does not render the same way at two different moments.
+#
+# The frames that make up the visual changelog live in design/ and are checked
+# in. `make artifacts` is what promotes them across, deliberately as a separate
+# command - see PLAN.md §6.
+/vhs/out/
+
+.DS_Store

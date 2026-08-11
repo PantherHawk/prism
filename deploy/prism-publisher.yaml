@@ -1,0 +1,40 @@
+# prism configuration for the publishing half of the phase 5 tape.
+#
+#   PRISM_CONFIG=$PWD/deploy/prism-publisher.yaml ./bin/prism
+#
+# This is the instance that actually scrapes Envoy. It republishes every scrape
+# on /stream so that the follower in prism-follower.yaml can build the same
+# store without adding a second scraper to the target - which is the whole
+# claim of the phase: ten people watching one endpoint, scraped once.
+#
+# It runs off screen during the recording, so its logging is off entirely
+# rather than merely quiet: the two prisms share a terminal, and a warning from
+# this one would be painted over the other one's frame.
+
+logging:
+  level: error
+  format: text
+  source: false
+
+telemetry:
+  enabled: false
+  service_name: prism
+
+scrape:
+  endpoint: http://localhost:9901/stats/prometheus
+  interval: 2s
+  timeout: 5s
+  retention: 15m
+  resolution: 2s
+  family_budget: 500
+  cardinality_warn: 250
+  user_agent: prism-publisher
+
+stream:
+  enabled: true
+  address: 127.0.0.1:9099
+  timeout: 5s
+  upstream: ""
+
+theme:
+  mode: auto

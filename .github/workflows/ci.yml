@@ -1,0 +1,101 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          check-latest: true
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Verify formatting
+        run: |
+          golangci-lint fmt ./...
+          git diff --exit-code
+
+      - name: Test
+        run: go test -race -shuffle=on -cover ./...
+
+      - name: Acceptance criteria
+        run: go test -race -tags bdd ./features/...
+
+      # Colours belong to internal/theme and nowhere else. This is the cheapest
+      # possible enforcement of the rule and it catches the case a linter
+      # cannot: a hex literal pasted into a view.
+      - name: No colours outside the theme package
+        run: |
+          if grep -rnE '#[0-9a-fA-F]{6}' --include='*.go' internal cmd \
+               | grep -v '^internal/theme/'; then
+            echo "::error::hex colours must live in internal/theme"
+            exit 1
+          fi
+
+  # The acceptance suite already grades Envoy's exposition in the verify job, by
+  # replaying features/testdata/envoy-stats.txt. This job runs the same
+  # scenarios against a live Envoy instead.
+  #
+  # It is separate because it fails for a different reason: verify fails when
+  # prism is wrong, and this fails when the recording has aged out of
+  # resembling what Envoy now emits. Folding the two together would make a stale
+  # fixture look like a code regression.
+  envoy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          check-latest: true
+
+      - name: Stand up Envoy
+        run: make envoy-up
+
+      - name: Acceptance criteria against the live target
+        run: make bdd-envoy
+
+      # A recording that no longer matches what Envoy emits is the thing this
+      # job exists to notice, and a diff is a clearer report of it than a
+      # failed assertion.
+      - name: Report fixture drift
+        if: always()
+        run: |
+          make envoy-fixture
+          if ! git diff --stat --exit-code features/testdata/envoy-stats.txt; then
+            echo "::warning::the recorded exposition has drifted; run 'make envoy-fixture'"
+          fi
+
+      - name: Tear down
+        if: always()
+        run: make envoy-down
+
+  release-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: check

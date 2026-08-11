@@ -1,0 +1,49 @@
+# prism configuration for the phase 4 tape.
+#
+#   PRISM_CONFIG=$PWD/deploy/prism-cardinality.yaml ./bin/prism
+#
+# Same clock as prism-demo.yaml, two different thresholds. Phase 4 is about
+# what prism does when a family outgrows its budget, and the Envoy in deploy/
+# never does: its widest family holds ten series against a budget of five
+# hundred. Recording the phase against the demo config would produce a frame
+# where every mechanism it claims is dormant.
+#
+# So the thresholds come down to meet the target rather than the target being
+# inflated to meet the thresholds. Eight is chosen against the ten-series
+# families - the per-worker listener and watchdog stats - so that they cross
+# both lines at once and the frame shows the badge and the ratio together,
+# while the narrower families stay clean and give the eye something to
+# contrast against.
+#
+# What this file cannot arrange is the `~` estimate marker. That appears only
+# once a family passes sketch.DefaultExactLimit, which is 4096 and is not
+# configurable, and nothing Envoy exposes here comes within two orders of
+# magnitude of it. It is covered by internal/sketch's tests instead.
+
+logging:
+  level: warn
+  format: text
+  source: false
+
+telemetry:
+  enabled: false
+  service_name: prism
+
+scrape:
+  endpoint: http://localhost:9901/stats/prometheus
+  interval: 2s
+  timeout: 5s
+  retention: 15m
+  resolution: 2s
+  family_budget: 8     # the ten-series families are sampled down to fit
+  cardinality_warn: 8  # ... and badged for having outgrown it
+  user_agent: prism
+
+stream:
+  enabled: false
+  address: 127.0.0.1:9099
+  timeout: 5s
+  upstream: ""
+
+theme:
+  mode: auto

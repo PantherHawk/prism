@@ -1,0 +1,43 @@
+# prism configuration.
+#
+# The path to this file is the only environment variable prism reads:
+#
+#   PRISM_CONFIG=/etc/prism/config.yaml prism
+#
+# Exporter endpoints, headers and protocols for prism's own telemetry are read
+# directly from the standard OTEL_* variables by the OpenTelemetry SDK, so they
+# do not appear here.
+
+logging:
+  level: info      # debug | info | warn | error
+  format: text     # text | json
+  source: false
+
+telemetry:
+  enabled: false
+  service_name: prism
+
+scrape:
+  endpoint: http://localhost:9901/stats/prometheus
+  interval: 15s
+  timeout: 10s
+  retention: 15m         # how much history the ring buffer keeps
+  resolution: 15s        # width of one bucket; retention/resolution = ring size
+  family_budget: 500     # series stored per family; beyond it the family is
+                         # sampled at 1:2, 1:4, 1:8 ... and the ratio is shown
+  cardinality_warn: 250  # flag a family with more distinct series than this
+  user_agent: prism
+
+stream:
+  # Publish this instance's scrapes as server-sent events on /stream, so that
+  # other prisms can watch without adding load to the target.
+  enabled: false
+  address: 127.0.0.1:9099
+  timeout: 5s
+
+  # Follow another prism instead of scraping. When set, the scrape section is
+  # unused: prism either scrapes or follows, never both.
+  upstream: ""
+
+theme:
+  mode: auto       # auto | dark | light

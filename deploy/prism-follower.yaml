@@ -1,0 +1,42 @@
+# prism configuration for the following half of the phase 5 tape.
+#
+#   PRISM_CONFIG=$PWD/deploy/prism-follower.yaml ./bin/prism
+#
+# This is the instance on screen. It never touches Envoy: it follows the prism
+# configured by prism-publisher.yaml and rebuilds the store from the samples
+# that arrive, which is why the scrape section below is inert. prism either
+# scrapes or follows, never both.
+#
+# The resolution and retention still matter even though nothing here scrapes,
+# because they size the follower's own ring buffer. They match the publisher's
+# so that a bucket means the same span on both sides; a follower with a coarser
+# resolution would fold several of the publisher's buckets into one and the two
+# charts would disagree about a spike that both of them saw.
+
+logging:
+  level: warn
+  format: text
+  source: false
+
+telemetry:
+  enabled: false
+  service_name: prism
+
+scrape:
+  endpoint: http://localhost:9901/stats/prometheus
+  interval: 2s
+  timeout: 5s
+  retention: 15m
+  resolution: 2s
+  family_budget: 500
+  cardinality_warn: 250
+  user_agent: prism-follower
+
+stream:
+  enabled: false
+  address: 127.0.0.1:9098
+  timeout: 5s
+  upstream: http://127.0.0.1:9099
+
+theme:
+  mode: auto

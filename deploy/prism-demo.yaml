@@ -1,0 +1,40 @@
+# prism configuration for the walkthrough tape.
+#
+#   PRISM_CONFIG=$PWD/deploy/prism-demo.yaml ./bin/prism
+#
+# The only thing this changes from config.example.yaml is the clock. Fifteen
+# seconds is the right default for a dashboard somebody leaves open; it is the
+# wrong one for a sixty-second recording, where it buys four buckets and a
+# chart that is mostly axis. Two seconds fills the window while the tape is
+# still running.
+#
+# Nothing else is tuned. The families, the cardinality and the rates on screen
+# are whatever Envoy reports.
+
+logging:
+  level: warn      # the tape shares a terminal with the TUI; keep it quiet
+  format: text
+  source: false
+
+telemetry:
+  enabled: false
+  service_name: prism
+
+scrape:
+  endpoint: http://localhost:9901/stats/prometheus
+  interval: 2s
+  timeout: 5s
+  retention: 15m
+  resolution: 2s
+  family_budget: 500
+  cardinality_warn: 250
+  user_agent: prism
+
+stream:
+  enabled: false
+  address: 127.0.0.1:9099
+  timeout: 5s
+  upstream: ""
+
+theme:
+  mode: auto

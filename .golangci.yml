@@ -1,0 +1,243 @@
+# Every linter is on by default. The disable list below is short and each entry
+# carries its reason, because "we turned it off" should always be a decision
+# someone can argue with rather than a mystery.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: all
+
+  disable:
+    # Would require every struct literal to name every field. In a TUI, where
+    # most literals are small partial overrides of a style or a keymap, this
+    # buries the two fields that matter under twelve that do not.
+    - exhaustruct
+    # Bubble Tea's contract is Update(Msg) (Model, Cmd) - returning an
+    # interface is the framework's design, not our accident.
+    - ireturn
+    # Superseded by wsl_v5, which is enabled below. Running both double-reports
+    # every whitespace finding.
+    - wsl
+    # Duplicated table-test bodies across feature suites are a feature, not a
+    # smell; dupl cannot tell the difference.
+    - dupl
+
+  settings:
+    depguard:
+      rules:
+        # Configuration is an entrypoint concern. If a domain package can
+        # import it, the domain quietly grows a dependency on a YAML file.
+        config-stays-at-the-edge:
+          list-mode: lax
+          files:
+            - $all
+            - "!**/cmd/prism/main.go"
+            - "!**/internal/app/build.go"
+            - "!**/internal/config/**"
+          deny:
+            - pkg: github.com/pantherhawk/prism/internal/config
+              desc: >-
+                only main.go and app.Build may read configuration; pass the
+                resolved values down as arguments instead
+
+        # v1 Charm packages moved to charm.land. Importing the old paths
+        # compiles but pulls a second, incompatible runtime into the binary.
+        charm-v2-only:
+          list-mode: lax
+          files:
+            - $all
+          deny:
+            - pkg: github.com/charmbracelet/bubbletea
+              desc: use charm.land/bubbletea/v2
+            - pkg: github.com/charmbracelet/lipgloss
+              desc: use charm.land/lipgloss/v2
+            - pkg: github.com/charmbracelet/bubbles
+              desc: use charm.land/bubbles/v2
+
+        # The render path must stay pure: given a snapshot it produces cells.
+        # No I/O, no clock, no randomness - that is what makes it testable and
+        # what keeps a frame inside its budget.
+        tui-is-pure:
+          list-mode: lax
+          files:
+            - "**/internal/tui/**"
+            - "**/internal/chart/**"
+            - "!$test"
+          deny:
+            - pkg: net/http
+              desc: the TUI renders a snapshot; it does not fetch one
+            - pkg: database/sql
+              desc: prism has no database
+            - pkg: math/rand
+              desc: use math/rand/v2 with an injected source so frames are reproducible
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    exhaustive:
+      default-signifies-exhaustive: true
+
+    funlen:
+      lines: 70
+      statements: 45
+      ignore-comments: true
+
+    cyclop:
+      max-complexity: 12
+
+    gocognit:
+      min-complexity: 20
+
+    nestif:
+      min-complexity: 4
+
+    godot:
+      scope: toplevel
+      capital: true
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+    gocritic:
+      enable-all: true
+      disabled-checks:
+        # Fights the named-field style used throughout the theme package.
+        - hugeParam
+      settings:
+        rangeValCopy:
+          sizeThreshold: 256
+
+    lll:
+      # Matches the golines formatter below, so the two never disagree.
+      line-length: 100
+      tab-width: 4
+
+    mnd:
+      ignored-numbers:
+        - "0"
+        - "1"
+        - "2"
+        - "60"
+        - "100"
+        - "1000"
+      ignored-functions:
+        - lipgloss.*
+        - harmonica.NewSpring
+
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: line-length-limit
+          arguments: [100]
+        - name: function-length
+          arguments: [70, 45]
+        - name: add-constant
+          disabled: true
+        # strings.Builder's writers are documented never to return an error,
+        # so checking them adds noise to every line that composes a string.
+        - name: unhandled-error
+          arguments:
+            - "strings.Builder.Write.*"
+            - "fmt.Fprint.*"
+        - name: cognitive-complexity
+          arguments: [20]
+        # Bubble Tea models are large by nature and legitimately hold state.
+        - name: max-public-structs
+          disabled: true
+        - name: flag-parameter
+          disabled: true
+
+    sloglint:
+      context: all
+      static-msg: true
+      key-naming-case: snake
+      args-on-sep-lines: true
+
+    varnamelen:
+      min-name-length: 2
+      ignore-decls:
+        - i int
+        - j int
+        - x int
+        - y int
+        - w int
+        - h int
+        - n int
+        - t *testing.T
+        - b *testing.B
+        - f *Frame
+        - g *Grid
+        - m Model
+        - ok bool
+        - fn func()
+
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - errors.Join(
+        - errors.New(
+        - errors.Unwrap(
+        - .Wrap(
+
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+
+  exclusions:
+    generated: lax
+    rules:
+      # Test helpers legitimately shadow, allocate loosely, and repeat.
+      - path: _test\.go
+        linters:
+          - err113
+          - funlen
+          - gochecknoglobals
+          - maintidx
+          - varnamelen
+          - wrapcheck
+      # Step definitions are registered from an init-shaped function by godog's
+      # own design.
+      - path: features/.*\.go
+        linters:
+          - gochecknoglobals
+      # A few tests live inside the package they test because what they pin is
+      # deliberately unexported: the subscriber's one-frame slot, the reconnect
+      # backoff schedule, the frame the views draw onto. Reaching those through
+      # the public surface would mean testing a five-second reconnect or a real
+      # terminal, which is a worse test of a worse design.
+      - path: internal/(stream/(subscriber|client)|tui/frame)_test\.go
+        linters:
+          - testpackage
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+    - golines
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(charm.land)
+        - prefix(github.com/pantherhawk/prism)
+      custom-order: true
+
+    gofumpt:
+      extra-rules: true
+
+    golines:
+      max-len: 100
+      tab-len: 4
+      shorten-comments: true
