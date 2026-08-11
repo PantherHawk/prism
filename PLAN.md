@@ -67,10 +67,10 @@ runner, so a feature file can be written with the plan rather than after the
 code. Removing the tag is part of finishing the phase.
 
 Each phase ends with a VHS tape that appends to the walkthrough, so the PNG
-series reads as a visual changelog. Every phase is gated on `make bdd` green and
-`make tape` regenerating.
+series reads as a visual changelog. Every phase is gated on `task bdd` green and
+`task tape` regenerating.
 
-This paragraph used to claim `make lint` clean as a third gate. It is not one and
+This paragraph used to claim `task lint` clean as a third gate. It is not one and
 was not one before the artifact pass — see §7, *Still open*. Recording a gate
 that is not being enforced is the same failure as recording a mockup and calling
 it a frame, so the claim is removed rather than aspirationally restated.
@@ -300,9 +300,9 @@ envoy-up` does not return until Envoy is serving stats that describe traffic —
 returning at "container started" would hand the suite an endpoint whose
 histograms are declared and empty.
 
-The suite runs twice against the same bytes. `make bdd` replays
+The suite runs twice against the same bytes. `task bdd` replays
 `features/testdata/envoy-stats.txt`, recorded from that stack, so the gate needs
-no container runtime; `make bdd-envoy` runs the identical scenarios against the
+no container runtime; `task bdd-envoy` runs the identical scenarios against the
 live admin port, which is how we find out the recording has aged. A fixture is a
 moment in one Envoy version's life, and nothing else in the suite would notice
 the moment passing.
@@ -554,16 +554,16 @@ the whole reason the six bugs above survived as long as they did — a mockup
 never has to render a number it did not choose, and never has to render one at
 a terminal width it did not choose either.
 
-Regenerating: `make envoy-up && make tape`, on a machine with Go 1.25, VHS and
-`ttyd`. `make tape` writes into `vhs/out/` only. Promoting those frames into
-`design/` is `make artifacts`, a second and deliberate command.
+Regenerating: `task envoy-up && task tape`, on a machine with Go 1.25, VHS and
+`ttyd`. `task tape` writes into `vhs/out/` only. Promoting those frames into
+`design/` is `task artifacts`, a second and deliberate command.
 
-**Why promotion is not folded into `make tape`.** A live chart never renders
+**Why promotion is not folded into `task tape`.** A live chart never renders
 twice the same, so a `tape` target that copied into `design/` would put a diff
 on all thirty artifacts every time anybody re-recorded any one phase, and a
 visual changelog that restates itself on every unrelated run is not a changelog.
 The cost of the split is that the two can drift; the mitigation is that
-`make artifacts` names its thirty files explicitly, so a frame that no tape
+`task artifacts` names its thirty files explicitly, so a frame that no tape
 produces any more fails the target instead of quietly staying behind.
 
 A caution for anyone changing a tape. **VHS does not capture at the instant
@@ -621,7 +621,7 @@ below. The pictures were wrong, and underneath four of them so was the program.
 
 ### Known snags, so they are not rediscovered
 
-- Tapes need `prism` on `PATH`. `make tape` puts `./bin` first, so a tape
+- Tapes need `prism` on `PATH`. `task tape` puts `./bin` first, so a tape
   records the working tree rather than an installed build.
 - Use `deploy/prism-demo.yaml`, not `config.example.yaml`. The 15s default fills
   four buckets inside a recording; the demo config's 2s fills the window. This
@@ -638,15 +638,15 @@ below. The pictures were wrong, and underneath four of them so was the program.
   looked exactly like P5 silently failing to write its two frames, and was not.
 - The long accumulation in `p2-zoom.tape` sits inside `Hide`. VHS records no
   frames while hidden, so two and a half minutes of a chart filling costs the
-  gif nothing; left visible it was the most expensive thing in `make tape` and
+  gif nothing; left visible it was the most expensive thing in `task tape` and
   all of it was the part with nothing to demonstrate.
 - `vhs` and `ttyd` are Homebrew installs; neither is in the repo's toolchain and
-  CI does not run `make tape`. The frames are therefore not gated by CI and can
+  CI does not run `task tape`. The frames are therefore not gated by CI and can
   drift from the program without anything failing.
 
 ### Still open
 
-1. **`make lint` is not clean, and §2 used to say every phase was gated on it being
+1. **`task lint` is not clean, and §2 used to say every phase was gated on it being
    clean.** That claim is false, and was false before this pass:
    `golangci-lint run ./...` reports **124 findings** across the tree. The
    paragraph in §2 asserting the gate has been removed rather than restated.

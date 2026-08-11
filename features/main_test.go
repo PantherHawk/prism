@@ -4,7 +4,7 @@
 //
 // The feature files in this directory are the criteria from PLAN.md written so
 // that they run. They are behind the `bdd` build tag so that `go test ./...`
-// stays a fast unit run and `make bdd` is the deliberate, slower gate: several
+// stays a fast unit run and `task bdd` is the deliberate, slower gate: several
 // scenarios stand up HTTP servers and wait on real timers.
 package features_test
 
