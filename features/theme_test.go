@@ -170,7 +170,7 @@ func (w *themeWorld) theSpectrumMatchesInBothPalettes(ctx context.Context) (cont
 //
 // CI greps for the same thing, but a rule that only lives in a workflow file is
 // a rule that a developer discovers after pushing. Running it here means the
-// answer arrives from `make bdd` instead.
+// answer arrives from `task bdd` instead.
 func (w *themeWorld) noHexOutsideTheThemePackage(ctx context.Context) (context.Context, error) {
 	exempt, err := filepath.Abs(themeExempt)
 	if err != nil {

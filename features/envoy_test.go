@@ -24,11 +24,11 @@ import (
 
 const (
 	// Variable envoyEndpointEnv points the suite at a live admin port. It is set
-	// by "make bdd-envoy" after "make envoy-up"; unset, the scenarios replay the
+	// by "task bdd-envoy" after "task envoy-up"; unset, the scenarios replay the
 	// recording instead.
 	envoyEndpointEnv = "PRISM_ENVOY_ENDPOINT"
 
-	// File envoyFixture holds that recording, captured by "make envoy-fixture".
+	// File envoyFixture holds that recording, captured by "task envoy-fixture".
 	envoyFixture = "testdata/envoy-stats.txt"
 
 	// Prefix envoyRenamed replaces the vendor's in the special-casing scenario.
@@ -203,7 +203,7 @@ func (w *envoyWorld) load() error {
 
 	body, err := os.ReadFile(envoyFixture)
 	if err != nil {
-		return fmt.Errorf("read %s (run `make envoy-up envoy-fixture`): %w", envoyFixture, err)
+		return fmt.Errorf("read %s (run `task envoy-up envoy-fixture`): %w", envoyFixture, err)
 	}
 
 	w.body = string(body)

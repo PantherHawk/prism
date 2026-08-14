@@ -65,11 +65,16 @@ jobs:
           go-version: "1.25"
           check-latest: true
 
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Stand up Envoy
-        run: make envoy-up
+        run: task envoy-up
 
       - name: Acceptance criteria against the live target
-        run: make bdd-envoy
+        run: task bdd-envoy
 
       # A recording that no longer matches what Envoy emits is the thing this
       # job exists to notice, and a diff is a clearer report of it than a
@@ -77,14 +82,14 @@ jobs:
       - name: Report fixture drift
         if: always()
         run: |
-          make envoy-fixture
+          task envoy-fixture
           if ! git diff --stat --exit-code features/testdata/envoy-stats.txt; then
-            echo "::warning::the recorded exposition has drifted; run 'make envoy-fixture'"
+            echo "::warning::the recorded exposition has drifted; run 'task envoy-fixture'"
           fi
 
       - name: Tear down
         if: always()
-        run: make envoy-down
+        run: task envoy-down
 
   release-check:
     runs-on: ubuntu-latest

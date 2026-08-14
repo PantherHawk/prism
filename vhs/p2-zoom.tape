@@ -52,7 +52,7 @@ Sleep 1500ms
 # inside Hide deliberately: VHS records no frames while hidden, so two and a
 # half minutes of a chart filling costs the gif nothing. Left visible it was
 # most of a four minute recording and the single most expensive thing in
-# `make tape`, all of it spent on the part with nothing to demonstrate.
+# `task tape`, all of it spent on the part with nothing to demonstrate.
 Sleep 150s
 Show
 

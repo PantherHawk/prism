@@ -1,9 +1,9 @@
 # The target prism is built against, stood up locally.
 #
-#   make envoy-up        bring the stack up and wait for it to be serving stats
-#   make bdd-envoy       run the acceptance suite against the live admin port
-#   make envoy-fixture   re-record features/testdata/envoy-stats.txt
-#   make envoy-down      tear it down
+#   task envoy-up        bring the stack up and wait for it to be serving stats
+#   task bdd-envoy       run the acceptance suite against the live admin port
+#   task envoy-fixture   re-record features/testdata/envoy-stats.txt
+#   task envoy-down      tear it down
 #
 # Envoy's admin listener is published on 9901, which is where prism looks by
 # default, so `./bin/prism` needs no configuration once this is up.

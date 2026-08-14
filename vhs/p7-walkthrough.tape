@@ -7,8 +7,8 @@
 #
 # Bring the stack up first:
 #
-#   make envoy-up
-#   make tape
+#   task envoy-up
+#   task tape
 #
 # It uses deploy/prism-demo.yaml rather than config.example.yaml for one
 # reason: a 2s scrape interval fills the window inside the length of a

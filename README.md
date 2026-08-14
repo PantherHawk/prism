@@ -20,13 +20,16 @@ Everything above is prism recorded against the Envoy in [`deploy/`](deploy) —
 553 real series on the run that produced these frames, and the two lines are the
 two clusters at the rates the load generators are actually driving them. Every
 image in `design/` is VHS output rather than a mockup; regenerate the set with
-`make envoy-up && make tape && make artifacts`.
+`task envoy-up && task tape && task artifacts`.
 
 ## Running it
 
+Commands run through [Task](https://taskfile.dev); `task --list` describes them
+all.
+
 ```sh
-make deps          # resolve modules (go.mod ships unpinned on purpose)
-make               # lint, test, build
+task deps          # resolve modules (go.mod ships unpinned on purpose)
+task               # lint, test, build
 PRISM_CONFIG=./config.example.yaml ./bin/prism
 ```
 
@@ -143,21 +146,21 @@ clusters over one backend, and three load generators at different rates so the
 pivot has something to separate.
 
 ```sh
-make envoy-up        # up, and waits until Envoy is serving stats with traffic in them
+task envoy-up        # up, and waits until Envoy is serving stats with traffic in them
 ./bin/prism          # the default endpoint is already Envoy's admin listener
-make envoy-down
+task envoy-down
 ```
 
-`make envoy-fixture` re-records [`features/testdata/envoy-stats.txt`](features/testdata),
+`task envoy-fixture` re-records [`features/testdata/envoy-stats.txt`](features/testdata),
 the exposition the acceptance suite replays.
 
 ## Acceptance criteria
 
-`features/` holds the Gherkin the phases are graded against; `make bdd` runs
+`features/` holds the Gherkin the phases are graded against; `task bdd` runs
 them with [godog][godog]. A phase is not done until its scenarios pass.
 
-The Envoy scenarios run twice against the same bytes. `make bdd` replays the
-recorded exposition, so the gate needs no container runtime; `make bdd-envoy`
+The Envoy scenarios run twice against the same bytes. `task bdd` replays the
+recorded exposition, so the gate needs no container runtime; `task bdd-envoy`
 runs the identical scenarios against a live admin port, which is how the
 recording is caught aging. Both are Envoy's own output — the recording is not a
 hand-written approximation of one.
