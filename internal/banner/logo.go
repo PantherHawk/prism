@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	// logoWidth and logoHeight are the art's dimensions. Render's layout maths
-	// depends on them, and logo_test.go asserts the asset still matches.
+	// The art's dimensions. Render's layout maths depends on them, and
+	// logo_internal_test.go asserts the asset still matches.
 	logoWidth  = 43
 	logoHeight = 15
 )
@@ -20,6 +20,10 @@ const (
 // font. It is a file rather than a string literal so that it stays editable as
 // art — every other character in it is a backslash, and escaping the whole
 // thing into Go source would make it unreadable and unfixable.
+//
+// No nolint:gochecknoglobals here: gochecknoglobals has a built-in allowance
+// for variables carrying a go:embed directive, so it never fires on this var,
+// and nolintlint would flag an unused directive if one were added back.
 //
 //go:embed promdate.ascii
 var art string
