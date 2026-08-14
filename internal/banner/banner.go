@@ -10,48 +10,46 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"charm.land/lipgloss/v2"
 
 	"github.com/pantherhawk/prism/internal/theme"
 )
 
-const (
-	// glyphHeight is the number of rows in every wordmark glyph.
-	glyphHeight = 5
+// labelWidth pads the runtime labels so their values form a column.
+const labelWidth = 8
 
-	// labelWidth pads the runtime labels so their values form a column.
-	labelWidth = 6
-)
+// swatchWidth is how many cells each spectrum band occupies in the colour row.
+const swatchWidth = 3
 
-// wordmark is the text rendered as block glyphs. One letter is drawn per
-// entry in [theme.Palette.Spectrum], so the two must stay the same length.
-const wordmark = "PRISM"
-
-// glyphs is a five-row block font covering exactly the letters in [wordmark].
-// It is deliberately hand-built rather than generated: it is five letters, and
-// a dependency on a figlet font would be a larger surface than the art.
-var glyphs = map[rune][glyphHeight]string{ //nolint:gochecknoglobals // immutable lookup table
-	'P': {"████ ", "█   █", "████ ", "█    ", "█    "},
-	'R': {"████ ", "█   █", "████ ", "█  █ ", "█   █"},
-	'I': {"█████", "  █  ", "  █  ", "  █  ", "█████"},
-	'S': {" ████", "█    ", " ███ ", "    █", "████ "},
-	'M': {"█   █", "██ ██", "█ █ █", "█   █", "█   █"},
-}
-
-// Info is the runtime detail shown beneath the wordmark. Empty fields are
+// Info is the runtime and host detail shown beside the wordmark. Every field
+// is a plain string, already formatted: the banner is a pure function of its
+// inputs, so nothing here may be derived at render time. Empty fields are
 // omitted rather than rendered blank.
 type Info struct {
+	// prism's own runtime.
 	Version  string
 	Endpoint string
 	Buffer   string
+
+	// The host, from internal/hostinfo.
+	User   string
+	Host   string
+	OS     string
+	Kernel string
+	Shell  string
+	Term   string
+	Go     string
+	Uptime string
 }
 
-// Render returns the full splash screen, centred within width.
+// Render returns the splash screen, centred within width.
 func Render(info Info, palette theme.Palette, styles theme.Styles, width int) string {
-	lines := make([]string, 0, glyphHeight+8)
-	lines = append(lines, mark(palette)...)
-	lines = append(lines, "", styles.Muted.Render("split your metrics into their spectrum"), "")
-	lines = append(lines, meta(info, styles)...)
+	lines := append(
+		[]string{styles.Accent.Render("PROMDATE"), ""},
+		infoBlock(info, palette, styles)...,
+	)
 	lines = append(lines, "", hint(styles))
 
 	block := lipgloss.JoinVertical(lipgloss.Left, lines...)
@@ -59,58 +57,68 @@ func Render(info Info, palette theme.Palette, styles theme.Styles, width int) st
 	return lipgloss.PlaceHorizontal(width, lipgloss.Center, block)
 }
 
-// mark renders the wordmark, colouring each letter with its own wavelength.
-func mark(palette theme.Palette) []string {
-	rows := make([]string, glyphHeight)
+// infoBlock renders the neofetch column: a user@host title, a rule, the facts
+// as an aligned two-column list, then the spectrum as colour blocks.
+//
+// The shape follows neofetch's own config, which is a title, a run of
+// label/value pairs and a trailing colour row.
+func infoBlock(info Info, palette theme.Palette, styles theme.Styles) []string {
+	var lines []string
 
-	for row := range glyphHeight {
-		var line strings.Builder
+	title := heading(info, styles)
+	lines = append(lines, title, styles.Chrome.Render(strings.Repeat("─", ansi.StringWidth(title))))
 
-		for i, letter := range wordmark {
-			glyph, ok := glyphs[letter]
-			if !ok {
-				continue
-			}
-
-			style := lipgloss.NewStyle().Foreground(palette.Spectrum[i%len(palette.Spectrum)])
-			line.WriteString(style.Render(glyph[row]))
-			line.WriteString(" ")
+	for _, fact := range []struct{ label, value string }{
+		{"version", info.Version},
+		{"scrape", info.Endpoint},
+		{"buffer", info.Buffer},
+		{"os", info.OS},
+		{"kernel", info.Kernel},
+		{"shell", info.Shell},
+		{"term", info.Term},
+		{"go", info.Go},
+		{"uptime", info.Uptime},
+	} {
+		if fact.value == "" {
+			continue
 		}
 
-		rows[row] = line.String()
+		lines = append(lines, join(
+			styles.Muted.Render(label(fact.label)),
+			styles.Base.Render(fact.value),
+		))
 	}
 
-	return rows
+	return append(lines, "", swatch(palette))
 }
 
-// meta renders the version and runtime lines as an aligned two-column block.
-func meta(info Info, styles theme.Styles) []string {
-	lines := make([]string, 0, 3)
+// heading renders the user@host line, falling back to the product name when
+// neither is known.
+func heading(info Info, styles theme.Styles) string {
+	switch {
+	case info.User != "" && info.Host != "":
+		return styles.Title.Render(info.User) +
+			styles.Chrome.Render("@") +
+			styles.Title.Render(info.Host)
+	case info.Host != "":
+		return styles.Title.Render(info.Host)
+	default:
+		return styles.Title.Render("promdate")
+	}
+}
 
-	if info.Version != "" {
-		lines = append(lines, join(
-			styles.Title.Render("prism"),
-			styles.Muted.Render(info.Version),
-			styles.Chrome.Render("·"),
-			styles.Muted.Render("bubbletea v2 · ultraviolet"),
-		))
+// swatch renders the spectrum as solid blocks, the way neofetch closes its
+// info column with the terminal's palette.
+func swatch(palette theme.Palette) string {
+	var row strings.Builder
+
+	for _, colour := range palette.Spectrum {
+		row.WriteString(lipgloss.NewStyle().
+			Foreground(colour).
+			Render(strings.Repeat("█", swatchWidth)))
 	}
 
-	if info.Endpoint != "" {
-		lines = append(lines, join(
-			styles.Muted.Render(label("scrape")),
-			styles.Secondary.Render(info.Endpoint),
-		))
-	}
-
-	if info.Buffer != "" {
-		lines = append(lines, join(
-			styles.Muted.Render(label("buffer")),
-			styles.Base.Render(info.Buffer),
-		))
-	}
-
-	return lines
+	return row.String()
 }
 
 // hint renders the single line telling the operator what to press.
