@@ -1,5 +1,5 @@
-// Package banner renders prism's splash screen: the wordmark with one
-// wavelength per letter, which is the whole product metaphor in five glyphs.
+// Package banner renders prism's splash screen: an embedded wordmark, coloured
+// in horizontal spectrum bands, beside a neofetch-style column of host facts.
 //
 // It is a pure function of its inputs. Given the same Info, palette and width
 // it produces the same string, which makes it trivially golden-testable and
@@ -92,8 +92,8 @@ func infoBlock(info Info, palette theme.Palette, styles theme.Styles) []string {
 	return append(lines, "", swatch(palette))
 }
 
-// heading renders the user@host line, falling back to the product name when
-// neither is known.
+// heading renders the user@host line: both when both are known, whichever one
+// is known when only one is, and the product name when neither is known.
 func heading(info Info, styles theme.Styles) string {
 	switch {
 	case info.User != "" && info.Host != "":
@@ -102,6 +102,8 @@ func heading(info Info, styles theme.Styles) string {
 			styles.Title.Render(info.Host)
 	case info.Host != "":
 		return styles.Title.Render(info.Host)
+	case info.User != "":
+		return styles.Title.Render(info.User)
 	default:
 		return styles.Title.Render("promdate")
 	}

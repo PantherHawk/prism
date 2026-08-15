@@ -90,6 +90,37 @@ func TestInfoBlockSurvivesAnEmptyInfo(t *testing.T) {
 	}
 }
 
+func TestHeadingCoversEveryAvailabilityOfUserAndHost(t *testing.T) {
+	t.Parallel()
+
+	_, styles := testPalette()
+
+	tests := []struct {
+		name string
+		user string
+		host string
+		want string
+	}{
+		{"both known", "alex", "studio", "alex@studio"},
+		{"host only", "", "vega", "vega"},
+		{"user only", "kay", "", "kay"},
+		{"neither known", "", "", "promdate"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			info := Info{User: tt.user, Host: tt.host}
+
+			got := ansi.Strip(heading(info, styles))
+			if got != tt.want {
+				t.Errorf("heading(%+v) = %q, want %q", info, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestInfoBlockEndsWithASwatchPerSpectrumBand(t *testing.T) {
 	t.Parallel()
 
