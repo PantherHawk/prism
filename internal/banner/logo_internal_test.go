@@ -1,6 +1,7 @@
 package banner
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -44,13 +45,13 @@ func TestBandCoversEveryColour(t *testing.T) {
 	}
 }
 
-// The reference implementation this is borrowed from divides row index by a
-// step, which overruns the final index whenever the row count is not a
-// multiple of the band count. The clamp is what makes that safe.
-func TestBandClampsWhenRowsDoNotDivideEvenly(t *testing.T) {
+// Every row must index a real colour, whatever shape the art takes. Row counts
+// that do not divide by the band count are the interesting case: the art is 23
+// rows over five bands today, and a hand-edit changes that number freely.
+func TestBandStaysInsideThePaletteForAnyArtHeight(t *testing.T) {
 	t.Parallel()
 
-	for _, rows := range []int{7, 13, 16, 27} {
+	for _, rows := range []int{7, 13, 16, 23, 27} {
 		const bands = 5
 
 		for i := range rows {
@@ -58,6 +59,25 @@ func TestBandClampsWhenRowsDoNotDivideEvenly(t *testing.T) {
 				t.Errorf("band(%d, %d, %d) is %d, out of range", i, rows, bands, got)
 			}
 		}
+	}
+}
+
+// The remainder is spread across the ramp rather than left on the last colour,
+// so no wavelength is more than a row wider than any other. Dividing by a fixed
+// step instead would give the art's 23 rows four rows each of the first four
+// bands and seven of the last.
+func TestBandSpreadsTheRemainderAcrossTheRamp(t *testing.T) {
+	t.Parallel()
+
+	const bands = 5
+
+	stripes := make([]int, bands)
+	for i := range logoHeight {
+		stripes[band(i, logoHeight, bands)]++
+	}
+
+	if slices.Max(stripes)-slices.Min(stripes) > 1 {
+		t.Errorf("stripes are %v, want none more than one row wider than another", stripes)
 	}
 }
 

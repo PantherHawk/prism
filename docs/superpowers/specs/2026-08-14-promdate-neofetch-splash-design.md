@@ -45,32 +45,38 @@ the gutter between logo and info.
 
 ### `internal/banner/promdate.ascii` (new)
 
-The logo, rendered in figlet's **swampland** font — an isometric outline face
-drawn from `_ / \ : . -` rather than VHS's solid `G` / `#` fills.
+The logo, rendered in figlet's **isometric2** font — an isometric outline face
+drawn from `_ / \ : | ~` rather than VHS's solid `G` / `#` fills.
 
 Generated as the single line `PROM DATE`, then split into two stacked words.
-Column 43 of that render is blank across all seven rows, which is the split
-point; both halves are exactly 43 columns wide.
+Columns 54–63 of that render are blank across all eleven rows, which is the
+word gutter and so the split point.
 
-- rows 1–7: `PROM`
-- row 8: blank separator
-- rows 9–15: `DATE`
+- rows 1–11: `PROM` (53 columns)
+- row 12: blank separator
+- rows 13–23: `DATE` (55 columns)
 
-Total block: **43 x 15**.
+Total block: **55 x 23**.
 
 Using a generated font rather than hand-drawn art is a deliberate change from
 the VHS reference. It costs the hand-made character of `vhs.ascii` and buys
-machine-consistent letterforms across eight glyphs, which is what makes the
-block small enough to fit a stock terminal.
+machine-consistent letterforms across eight glyphs, which is what keeps the
+block to a shape the layout can reason about.
 
 ### `internal/banner/logo.go` (new)
 
 Embeds `promdate.ascii` and colours it. Splits the art on newlines and applies
 the banded ramp above, with `palette.Spectrum` as the colour list — five bands
-across 15 rows, violet at the top through red at the bottom. Fifteen rows over
-five bands divides exactly, so each band covers three rows. `clamp` is still
-required: it guards the final band whenever the row count is not a multiple of
-the band count, which any future edit to the art would cause.
+across 23 rows, violet at the top through red at the bottom.
+
+Twenty-three rows over five bands does not divide evenly, and this is where the
+implementation departs from the VHS reference. VHS divides the row index by a
+fixed step of `rows/bands`, which leaves the whole remainder on the last
+colour: here that would be four rows each of violet through green under **seven
+rows of red**, so `PROM` would carry three wavelengths and `DATE` barely two.
+Scaling the index instead — `i*bands/rows` — spreads the remainder across the
+ramp, giving stripes of 5, 5, 4, 5, 4. The clamp stays as a bounds guard, but
+it is no longer load-bearing: the scaled index cannot overrun.
 
 ### `internal/hostinfo` (new)
 
@@ -109,9 +115,14 @@ The five-row block font (`glyphs`) and the `wordmark` constant are removed.
 
 `Render` picks one of three tiers from the terminal dimensions.
 
-**Full (width >= 80, height >= 22).** Logo left, info right, joined with
+**Full (width >= 92, height >= 26).** Logo left, info right, joined with
 `lipgloss.JoinHorizontal`, separated by the gutter. The whole block is centred
 horizontally as it is today.
+
+The constants gate the tier but cannot be the whole test, because the info
+column is as wide as the facts it was handed and `sourceName` can return an
+arbitrarily long upstream URL. `Render` therefore composes the full block and
+measures it, falling back to compact if it would not fit the width after all.
 
 **Compact (width >= `minWidth`, height >= `minHeight`).** The logo is omitted
 and the info block is drawn alone beneath a styled `PROMDATE` title line. This
@@ -122,10 +133,15 @@ than a degraded one, and it means one art asset rather than two.
 already returns the "terminal too small" message before `banner.Render` is
 reached.
 
-A 43 x 15 logo, a 4-column gutter and a ~32-column info block total 79 columns,
-and the composition is ~18 rows tall with the keyhint. A stock terminal is
-80 x 24, so the **full tier is the common case** and the compact tier exists for
-genuinely narrow windows and split panes.
+A 55 x 23 logo, a 4-column gutter and a ~32-column info block total 91 columns,
+and the composition is 25 rows tall with the keyhint.
+
+This does **not** fit a stock 80 x 24 terminal, which is a deliberate trade
+made when the wordmark moved from swampland to isometric2: the new face is half
+again as large, and nothing short of a second art asset would keep a logo on an
+80-column screen. A stock terminal therefore draws the compact tier, and the
+full tier is the common case only on a window someone has sized up — which is
+most of them, and all of the recorded ones.
 
 The info block follows `vhs.conf`'s order: `user@host` title, blank, the
 label/value pairs, then a spectrum swatch row built from `palette.Spectrum`.
@@ -169,9 +185,14 @@ exercise the full tier.
 ## Risks
 
 Low. The earlier draft of this design hand-drew the art at VHS density, which
-was both the main risk and the reason the composition did not fit a normal
-terminal; the swampland font removes both. The art is a fixed asset, and the
-surrounding code is small and independently testable.
+was the main risk; a generated font removes it. The art is a fixed asset, and
+the surrounding code is small and independently testable.
+
+The one live risk is the size of the isometric2 block: it puts the full tier
+out of reach of a stock 80 x 24 terminal, so anyone running the splash in a
+default-sized window sees the compact tier and never the wordmark. That is an
+accepted trade rather than a defect, but it is the thing to revisit first if
+the splash reads as bare in the wild.
 
 The remaining unknown is `hostinfo`'s platform code. Kernel and uptime are the
 only fields needing per-OS implementations, they are the two least important
