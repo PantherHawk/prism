@@ -1,15 +1,12 @@
-# Phase 0 - the splash screen. prism starts, resolves its theme from the
-# terminal background, draws the wordmark, and hands over to the dashboard.
+# Phase 0 - the splash screen in the light palette.
 #
-# The sleep before the screenshot is the whole difficulty. The splash retires
-# itself after tui.splashFor, which is 1200ms, and this tape used to wait 1800ms
-# before capturing - so it photographed the dashboard and called it the banner.
-# Nothing about the frame said so, because a dashboard is a plausible thing for
-# a tape named p0-banner to contain.
+# The companion to p0-banner.tape. Separate because `Set Theme` is a tape-level
+# setting and prism's own background request does not survive the recording; see
+# p6-theme-dark.tape for the whole argument.
 #
-# The window is therefore narrow: after prism has started and drawn, and before
-# 1200ms have passed. It is aimed early because VHS captures a beat after the
-# command is reached rather than at it.
+# The capture window and the 2100x900 sizing are both p0-banner.tape's, for the
+# reasons it sets out: the splash retires itself at tui.splashFor, and anything
+# narrower than the composed full tier photographs the compact one instead.
 Output vhs/out/p0-banner-light.gif
 
 Require prism
@@ -17,8 +14,8 @@ Require prism
 Set Shell        bash
 Set FontFamily   "JetBrains Mono"
 Set FontSize     18
-Set Width        1400
-Set Height       760
+Set Width        2100
+Set Height       900
 Set Padding      24
 Set Margin       36
 Set MarginFill   "#e6e9ef"
