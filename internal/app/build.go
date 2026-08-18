@@ -11,6 +11,7 @@ import (
 	"github.com/pantherhawk/prism/internal/apphelpers"
 	"github.com/pantherhawk/prism/internal/banner"
 	"github.com/pantherhawk/prism/internal/config"
+	"github.com/pantherhawk/prism/internal/hostinfo"
 	"github.com/pantherhawk/prism/internal/logging"
 	"github.com/pantherhawk/prism/internal/scrape"
 	"github.com/pantherhawk/prism/internal/series"
@@ -96,13 +97,7 @@ func Build(
 		return application, err
 	}
 
-	splash := banner.Info{
-		Version:  info.Version,
-		Endpoint: sourceName(cfg),
-		Buffer:   fmt.Sprintf("%s ring · %s buckets", cfg.Scrape.Retention, cfg.Scrape.Resolution),
-	}
-
-	ui, err := tui.New(cfg.Theme, splash, cfg.Scrape.CardinalityWarn, store, log)
+	ui, err := tui.New(cfg.Theme, splashInfo(cfg, info), cfg.Scrape.CardinalityWarn, store, log)
 	if err != nil {
 		return application, fmt.Errorf("build tui: %w", err)
 	}
@@ -111,6 +106,29 @@ func Build(
 	application.AddStartupFuncs(source, broker.Run, ui.Run)
 
 	return application, nil
+}
+
+// splashInfo assembles what the splash screen draws: prism's own runtime, from
+// the config and the linker's build metadata, and the host's, from hostinfo.
+//
+// The host facts are read here, once, at startup. That keeps banner.Render a
+// pure function of what it is handed rather than of the machine it runs on.
+func splashInfo(cfg config.Config, info BuildInfo) banner.Info {
+	facts := hostinfo.Collect()
+
+	return banner.Info{
+		Version:  info.Version,
+		Endpoint: sourceName(cfg),
+		Buffer:   fmt.Sprintf("%s ring · %s buckets", cfg.Scrape.Retention, cfg.Scrape.Resolution),
+		User:     facts.User,
+		Host:     facts.Host,
+		OS:       facts.OS,
+		Kernel:   facts.Kernel,
+		Shell:    facts.Shell,
+		Term:     facts.Term,
+		Go:       facts.Go,
+		Uptime:   facts.Uptime,
+	}
 }
 
 // sourceName describes where samples will come from, for the splash screen.

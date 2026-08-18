@@ -58,7 +58,7 @@ func (m model) content() string {
 	case m.width < minWidth || m.height < minHeight:
 		return m.centred(fmt.Sprintf("terminal too small: need %dx%d", minWidth, minHeight))
 	case m.splash:
-		return m.centred(banner.Render(m.info, m.palette, m.styles, m.width))
+		return m.centred(banner.Render(m.info, m.palette, m.styles, m.width, m.height))
 	default:
 		return m.dashboard()
 	}

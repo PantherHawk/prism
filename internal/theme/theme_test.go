@@ -117,7 +117,8 @@ func TestBothPalettesFillEveryRole(t *testing.T) {
 	}
 }
 
-// The banner draws one glyph per spectrum band, so the two lengths are coupled.
+// The banner cuts its art into one stripe per spectrum band, so an empty or
+// lopsided spectrum would divide by zero or leave a wavelength undrawn.
 func TestSpectrumIsTheSameWidthInBothPalettes(t *testing.T) {
 	t.Parallel()
 
